@@ -1,6 +1,6 @@
 using lbfgscuda
 using Test
 
-@testset "lbfgscuda.jl" begin
+@testset "main.jl" begin
     # Write your tests here.
 end
