@@ -12,10 +12,14 @@ using FiniteDiff
 using BenchmarkTools
 using ProfileView
 
+#TODO rozdelit na dva soubory. Vsechny funkce krome toho co bylo v og lbfgs dat do utils
+# include("utils.jl")
+# using .utils
 include("l_bfgs_with_cuda.jl")
 using .l_bfgs_with_cuda
 
 
+#M is single solution size, N is number of solutions wanted
 function random_init(seed::Int, M::Int)
     Random.seed!(seed)
     return rand(M)
@@ -55,22 +59,23 @@ compute_and_print(f, x0; verbose=false) = compute_and_print(f, x0, verbose)
 function f(x::CUDA.CuArray{T}) where T
     # Compute the sum of the absolute differences for all elements
     given_height = 9
-    return sum(abs.(x .^ 2 .- given_height))
+    return sum((x .^ 2 .- given_height).^2)
 end
 
 function f(x::Array{T}) where T
     # Compute the sum of the absolute differences for all elements
     given_height = 9
-    return sum(abs.(x .^ 2 .- given_height))
+    return sum((x .^ 2 .- given_height).^2)
 end
 
 #Run the base bfgs on this function
 benchmarking = false
-M = 100
-x0 = random_init(69420, M) # Initial guess
-compute_and_print(f, x0, verbose=true)
+M = 2 #solution size TODO FUNGUJE JEN PRO M=1 WTF
+# x0 = random_init(69420, M) # Initial guess
+# compute_and_print(f, x0, verbose=true)
 
 x0 = random_init(69420, M) # Initial guess
+print(CuArray(x0))
 compute_and_print(f, CuArray(x0), verbose=true)
 
 
