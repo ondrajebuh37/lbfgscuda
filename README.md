@@ -10,3 +10,4 @@ TODO je spravne CUDA_?
 TODO proc sou tak random importy
 
 nejcastejsi issue : scalar indexing -> fix broadcasting, neexistujici multiple dispatch -> doimplementovat(obcas jsem to nahradil ::Any docasne a pridal TODO), missing importy -> Zjistit z jakyho pkg chybi a doplnit
+

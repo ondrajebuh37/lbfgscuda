@@ -92,8 +92,8 @@ function twoloop!(s,
 
     return
 end
-# Compute gradient using finite differences on the GPU TODO Any
-function value_gradient_CUDA!(d::Any, initial_x::CUDA.CuArray{T}) where T
+# Compute gradient using finite differences on the GPU TODO Any - dal jsem tam D protoze to uz nekde bylo na stejnym miste o funkci vys
+function value_gradient_CUDA!(d::D, initial_x::CUDA.CuArray{T}) where {D,T}
     ff = d.f  # The function itself
     epsilon = eps(T) * 1000  # A small perturbation for finite differences
     # dd = CUDA.zeros(T, length(initial_x))  # Gradient output array on the GPU
@@ -705,10 +705,10 @@ x_of_nans(x, Tf=eltype(x)) = fill!(Tf.(x), Tf(NaN))
 
 
 #TODO co to any tady >:(
-function default_relstep(::Any, ::Any)
-    # Handle Float32 cases
-    return 1e-6
-end
+# function default_relstep(::Any, ::Any)
+#     # Handle Float32 cases
+#     return 1e-6
+# end
 
 struct GradientCache_CUDA{CacheType1,CacheType2,CacheType3,CacheType4,fdtype,returntype,inplace}
     fx::CacheType1
@@ -721,7 +721,7 @@ function finite_difference_gradient!(
     f,
     x::StridedVector{<:Number},
     cache::GradientCache_CUDA{T1,T2,T3,T4,fdtype,returntype,inplace};
-    relstep=default_relstep(fdtype, eltype(x)),
+    relstep=1e-6,#default_relstep(fdtype, eltype(x)),
     absstep=relstep,
     dir=true) where {T1,T2,T3,T4,fdtype,returntype,inplace}
 
