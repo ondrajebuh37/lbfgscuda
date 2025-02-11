@@ -1,5 +1,4 @@
 module l_bfgs_with_cuda
-#Directly stolen from https://github.com/JuliaNLSolvers/Optim.jl/blob/master/src/multivariate/solvers/first_order/l_bfgs.jl
 using CUDA #TODO u vsech CUDA.CuArray dat pryc to CUDA
 using NLSolversBase
 using ForwardDiff
@@ -219,9 +218,21 @@ function trace!(tr, d, state, iteration, method::LBFGS_CUDA, options, curr_time=
 end
 
 
+
+
+
+
+
+
+
+
+
+
+
+
 #TODO vsechno pod timhle TODO by melo byt v utils.jl
 
-# update_g!(d, state, method) = nothing
+# https://github.com/JuliaNLSolvers/Optim.jl/blob/b041bd63373cf2403180c6993eff235b5c010670/src/multivariate/optimize/optimize.jl#L4
 function update_g!(d, state, method::M) where M<:Union{FirstOrderOptimizer, Newton}
     # Update the function value and gradient
     value_gradient_CUDA!(d, state.x)
@@ -229,28 +240,25 @@ function update_g!(d, state, method::M) where M<:Union{FirstOrderOptimizer, Newt
         project_tangent!(method.manifold, gradient(d), state.x)
     end
 end
-# update_fg!(d, state, method) = nothing
-# update_fg!(d, state, method::ZerothOrderOptimizer) = value!(d, state.x)
+
+#https://github.com/JuliaNLSolvers/Optim.jl/blob/b041bd63373cf2403180c6993eff235b5c010670/src/multivariate/optimize/optimize.jl#L9
 function update_fg!(d, state, method::M) where M<:Union{FirstOrderOptimizer, Newton}
     value_gradient_CUDA!(d, state.x)
     if M <: FirstOrderOptimizer #only for methods that support manifold optimization
         project_tangent!(method.manifold, gradient(d), state.x)
     end
 end
-
-# # Update the Hessian
-# update_h!(d, state, method) = nothing
-# update_h!(d, state, method::SecondOrderOptimizer) = hessian!(d, state.x)
-
+# https://github.com/JuliaNLSolvers/Optim.jl/blob/b041bd63373cf2403180c6993eff235b5c010670/src/multivariate/optimize/optimize.jl#L22
 after_while!(d, state, method, options) = nothing
 
+# https://github.com/JuliaNLSolvers/Optim.jl/blob/b041bd63373cf2403180c6993eff235b5c010670/src/multivariate/optimize/optimize.jl#L24
 function initial_convergence(d, state, method::AbstractOptimizer, initial_x, options)
     gradient!(d, initial_x)
     stopped = !isfinite(value(d)) || any(!isfinite, gradient(d))
     maximum(abs, gradient(d)) <= options.g_abstol, stopped
 end
 
-
+# https://github.com/JuliaNLSolvers/Optim.jl/blob/b041bd63373cf2403180c6993eff235b5c010670/src/multivariate/optimize/optimize.jl#L32
 function optimize_CUDA(d::D, initial_x::Tx, method::M,
                   options::Options{T, TCallback} = Options(;default_options(method)...),
                   state = initial_state_CUDA(method, options, d, initial_x)) where {D<:AbstractObjective, M<:AbstractOptimizer, Tx <: AbstractArray, T, TCallback}
@@ -369,6 +377,10 @@ function optimize_CUDA(d::D, initial_x::Tx, method::M,
                                         stopped_by,
                                         )
 end
+
+
+#https://github.com/JuliaNLSolvers/NLSolversBase.jl/blob/e0d5949629f2adae1faa6345dea6675acfae21db/src/objective_types/oncedifferentiable.jl#L1
+
 # Used for objectives and solvers where the gradient is available/exists
 mutable struct OnceDifferentiable_CUDA{TF, TDF, TX} <: AbstractObjective
     f # objective
@@ -384,10 +396,12 @@ mutable struct OnceDifferentiable_CUDA{TF, TDF, TX} <: AbstractObjective
 end
 
 function alloc_DF(x::CUDA.CuArray{T}, F::T) where T
-    # Example of allocating a CUDA array for the gradient, sized to match `x`
-    # You can use `F` in some way depending on what you want to compute for `DF`
+    # Allocating a CUDA array for the gradient, sized to match `x`
     return CUDA.zeros(T, length(x))
 end
+
+
+#https://github.com/JuliaNLSolvers/NLSolversBase.jl/blob/e0d5949629f2adae1faa6345dea6675acfae21db/src/objective_types/oncedifferentiable.jl#L1
 ### Only the objective
 # Ambiguity
 OnceDifferentiable_CUDA(f, x::AbstractArray,
@@ -404,7 +418,7 @@ OnceDifferentiable_CUDA(f, x::AbstractArray,
     OnceDifferentiable_CUDA(f!, x::AbstractArray, F::AbstractArray, DF, autodiff)
 end
 
-
+#https://github.com/JuliaNLSolvers/NLSolversBase.jl/blob/e0d5949629f2adae1faa6345dea6675acfae21db/src/objective_types/oncedifferentiable.jl#L1
 function OnceDifferentiable_CUDA(f, x_seed::AbstractArray{T},
                             F::Real,
                             DF::AbstractArray,
@@ -454,6 +468,9 @@ function OnceDifferentiable_CUDA(f, x_seed::AbstractArray{T},
     end
 end
 
+
+#https://github.com/JuliaNLSolvers/NLSolversBase.jl/blob/e0d5949629f2adae1faa6345dea6675acfae21db/src/objective_types/oncedifferentiable.jl#L1
+
 has_not_dep_symbol_in_ad = Ref{Bool}(true)
 OnceDifferentiable_CUDA(f, x::AbstractArray, F::AbstractArray, autodiff::Symbol, chunk::ForwardDiff.Chunk = ForwardDiff.Chunk(x)) =
 OnceDifferentiable_CUDA(f, x, F, alloc_DF(x, F), autodiff, chunk)
@@ -467,6 +484,9 @@ function OnceDifferentiable_CUDA(f, x::AbstractArray, F::AbstractArray,
     end
     OnceDifferentiable_CUDA(f, x, F, alloc_DF(x, F), :forward, chunk)
 end
+
+#https://github.com/JuliaNLSolvers/NLSolversBase.jl/blob/e0d5949629f2adae1faa6345dea6675acfae21db/src/objective_types/oncedifferentiable.jl#L1
+
 function OnceDifferentiable_CUDA(f, x_seed::AbstractArray, F::AbstractArray, DF::AbstractArray,
     autodiff::Symbol , chunk::ForwardDiff.Chunk = ForwardDiff.Chunk(x_seed))
     if  typeof(f) <: Union{InplaceObjective, NotInplaceObjective}
@@ -544,6 +564,8 @@ function OnceDifferentiable_CUDA(f, x_seed::AbstractArray, F::AbstractArray, DF:
     end
 end
 
+#https://github.com/JuliaNLSolvers/NLSolversBase.jl/blob/e0d5949629f2adae1faa6345dea6675acfae21db/src/objective_types/oncedifferentiable.jl#L1
+
 ### Objective and derivative
 function OnceDifferentiable_CUDA(f, df,
                    x::AbstractArray,
@@ -559,6 +581,8 @@ function OnceDifferentiable_CUDA(f, df,
     OnceDifferentiable_CUDA(f, df!, fdf!, x, F, DF)
 end
 
+#https://github.com/JuliaNLSolvers/NLSolversBase.jl/blob/e0d5949629f2adae1faa6345dea6675acfae21db/src/objective_types/oncedifferentiable.jl#L1
+
 function OnceDifferentiable_CUDA(f, j,
                    x::AbstractArray,
                    F::AbstractArray,
@@ -572,6 +596,8 @@ function OnceDifferentiable_CUDA(f, j,
     OnceDifferentiable_CUDA(f!, j!, fj!, x, F, J)
 end
 
+
+#https://github.com/JuliaNLSolvers/NLSolversBase.jl/blob/e0d5949629f2adae1faa6345dea6675acfae21db/src/objective_types/oncedifferentiable.jl#L1
 
 ### Objective, derivative and combination
 function OnceDifferentiable_CUDA(f, df, fdf,
@@ -592,6 +618,8 @@ function OnceDifferentiable_CUDA(f, df, fdf,
     [0,], [0,])
 end
 
+#https://github.com/JuliaNLSolvers/NLSolversBase.jl/blob/e0d5949629f2adae1faa6345dea6675acfae21db/src/objective_types/oncedifferentiable.jl#L1
+
 function OnceDifferentiable_CUDA(f, df, fdf,
                             x::AbstractArray,
                             F::AbstractArray,
@@ -607,19 +635,11 @@ function OnceDifferentiable_CUDA(f, df, fdf,
     OnceDifferentiable_CUDA(f, df!, fdf!, copy(F), copy(DF), x_f, x_df, [0,], [0,])
 end
 
-# function is_finitediff(autodiff)
-#     return autodiff == :finite
-# end
+
+#https://github.com/JuliaNLSolvers/NLSolversBase.jl/blob/e0d5949629f2adae1faa6345dea6675acfae21db/src/NLSolversBase.jl#L56
 is_finitediff(autodiff) = autodiff ∈ (:central, :finite, :finiteforward, :finitecomplex)
 
-# function forward_difference(f, x, h=1e-6)
-#     return (f(x + h) - f(x)) / h
-# end
-
-# function central_difference(f, x, h=1e-6)
-#     return (f(x + h) - f(x - h)) / (2 * h)
-# end
-
+#https://github.com/JuliaNLSolvers/NLSolversBase.jl/blob/e0d5949629f2adae1faa6345dea6675acfae21db/src/NLSolversBase.jl#L56
 function finitediff_fdtype(autodiff::Symbol)
     if autodiff == :finiteforward
         fdtype = Val{:forward}
@@ -633,6 +653,8 @@ end
 
 #These were taken from NLSolversBase.jl/src/objective_types/inplace_factory.jl and for some reason simple using didnt work TODO
 
+#NLSolversBase.jl/src/objective_types/inplace_factory.jl
+
 function fdf!_from_fdf(fg, F::Real, inplace)
     if inplace
         return fg
@@ -644,6 +666,9 @@ function fdf!_from_fdf(fg, F::Real, inplace)
         end
     end
 end
+
+#NLSolversBase.jl/src/objective_types/inplace_factory.jl
+
 function fdf!_from_fdf(fj, F::AbstractArray, inplace)
     if inplace
         return fj
@@ -656,6 +681,8 @@ function fdf!_from_fdf(fj, F::AbstractArray, inplace)
     end
 end
 
+#NLSolversBase.jl/src/objective_types/inplace_factory.jl
+
 function df!_from_df(g, F::Real, inplace)
     if inplace
         return g
@@ -666,6 +693,9 @@ function df!_from_df(g, F::Real, inplace)
         end
     end
 end
+
+#NLSolversBase.jl/src/objective_types/inplace_factory.jl
+
 function df!_from_df(j, F::AbstractArray, inplace)
     if inplace
         return j
@@ -676,10 +706,16 @@ function df!_from_df(j, F::AbstractArray, inplace)
         end
     end
 end
+
 #same for this except src/NLSolversBase.jl
+
+#NLSolversBase.jl/src/NLSolversBase.jl
 x_of_nans(x, Tf=eltype(x)) = fill!(Tf.(x), Tf(NaN))
 
 
+#TODO this should be imported
+
+#https://github.com/JuliaDiff/FiniteDiff.jl/blob/a7eca2d4b73c4de12140d89df7621fcc90d29190/src/gradients.jl#L2
 struct GradientCache_CUDA{CacheType1,CacheType2,CacheType3,CacheType4,fdtype,returntype,inplace}
     fx::CacheType1
     c1::CacheType2
@@ -687,6 +723,7 @@ struct GradientCache_CUDA{CacheType1,CacheType2,CacheType3,CacheType4,fdtype,ret
     c3::CacheType4
 end
 
+#https://github.com/JuliaDiff/FiniteDiff.jl/blob/a7eca2d4b73c4de12140d89df7621fcc90d29190/src/gradients.jl#L183
 function finite_difference_gradient!(
     df::StridedVector{<:Number},
     f,
@@ -783,6 +820,10 @@ function value_gradient_CUDA!!(obj::D, x::CUDA.CuArray{T}) where {D,T}
 end
 
 
+
+
+#https://github.com/JuliaDiff/FiniteDiff.jl/blob/a7eca2d4b73c4de12140d89df7621fcc90d29190/src/gradients.jl#L2
+
 """
     FiniteDiff.GradientCache(
         df         :: Union{<:Number,AbstractArray{<:Number}},
@@ -793,6 +834,7 @@ end
 
 Allocating Cache Constructor
 """
+
 function GradientCache_CUDA(
     df,
     x,
@@ -841,6 +883,9 @@ function GradientCache_CUDA(
         returntype,inplace}(nothing, _c1, _c2, _c3)
 
 end
+
+
+#https://github.com/JuliaDiff/FiniteDiff.jl/blob/a7eca2d4b73c4de12140d89df7621fcc90d29190/src/gradients.jl#L2
 
 """
     FiniteDiff.GradientCache(
@@ -892,7 +937,9 @@ function GradientCache_CUDA(
 end
 
 
-#From FiniteDiff
+#Both compute_epsilons From FiniteDiff
+#https://github.com/JuliaDiff/FiniteDiff.jl/blob/a7eca2d4b73c4de12140d89df7621fcc90d29190/src/epsilons.jl#L8
+
 @inline function compute_epsilon(::Val{:forward}, x::T, relstep::Real, absstep::Real, dir::Real) where T<:Number
     return max(relstep*abs(x), absstep)*dir
 end

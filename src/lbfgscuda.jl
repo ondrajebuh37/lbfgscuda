@@ -13,8 +13,9 @@ using BenchmarkTools
 using ProfileView
 using DataFrames
 using CSV
+using Plots
 
-#TODO rozdelit na dva soubory. Vsechny funkce krome toho co bylo v og lbfgs dat do utils
+#TODO rozdelit na tri soubory. Vsechny funkce krome toho co bylo v og lbfgs dat do utils, rozdelit pak skripty do bench + test_q + test_g.  Co by melo byt v lbfgscuda.jl?
 # include("utils.jl")
 # using .utils
 include("l_bfgs_with_cuda.jl")
@@ -109,7 +110,7 @@ end
 
 ########################################################################################################
 #Run the base bfgs on this function
-benchmarking = true
+benchmarking = false
 gauss = false #If gauss = true, obj. function is gauss. If gauss= false : objective func is quadratic.   (sum of squared diff*)
 #This is for graphical purposes only
 f_sel = fun_sel(gauss)
@@ -155,7 +156,7 @@ results = DataFrame(
     Min_Value = Float64[]
 )
 
-
+#TODO diff behavior? https://stackoverflow.com/questions/13872325/why-is-my-numerical-algorithm-behaving-differently-on-two-different-machines
 
 #Choose benchmarking function
 if f_sel.gauss
@@ -197,12 +198,34 @@ if benchmarking
 end
 #testcases can be done just by comparing LBFGS and cuda LBFGS results.
 
-#TODO add to tests cca 3 functions and test on known results.
+#TODO add to tests 2-3 functions and test on known results.
 
-#If enough time, create demo where you do this with inverted gaussian. You first click points to sample quartic function and do MLE function f(x).
 
 #run N times BFGS on random init solutions x0 and draw where they end. It will be feasible to visualise in 2d.
+#Demo -> This TODO should be added to scripts/demo_draw.jl
 
+M = 10
+min_r = -10
+max_r = 10
+
+x0 = random_init(69420, M, min_r, max_r) # Initial guess
+
+sols, min = compute_and_print(g, CuArray(x0), verbose=true)
+
+sol_vals = g.([sols])
+
+num_of_x_vals = 1000
+x_vals = Array(range(min_r, max_r, length=num_of_x_vals))
+y_vals = g.([x_vals])  # Compute corresponding function values
+
+plot(x_vals, y_vals, label="g(x)", linewidth=2, legend=:topright)
+
+# print(typeof(sols), typeof(sol_vals))
+
+scatter!(Array(sols), sol_vals, label="Solutions", markersize=5, color=:red)
+#TODO proc to nefunguje? Display Plot sem zapnul tak wtf
+display(plot!)
+readline()
 end
 
 
